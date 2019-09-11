@@ -36,6 +36,9 @@ function adapt!(x::AdaptiveUvProposal{T}, gen::Int64,
     x.accepted = 0
 end
 
+consider_adaptation!(prop::ProposalKernel, generation::Int) =
+    generation % prop.tuneinterval == 0 ? adapt!(prop, generation) : nothing
+
 hyperp(x::AdaptiveUvProposal{Uniform}) = x.kernel.b
 hyperp(x::AdaptiveUvProposal{Normal}) = x.kernel.σ
 adapted(kernel::Uniform, lσ::Float64) = Uniform(-exp(lσ), exp(lσ))
@@ -55,4 +58,12 @@ end
 function scale(k::AdaptiveUvProposal{Uniform}, x::Vector{Float64})
     xp = x .* exp(rand(k))
     return xp, sum(log.(xp)) - sum(log.(x))
+end
+
+function reflect(x::Float64, a::Float64=0., b::Float64=1.)
+    while !(a <= x <= b)
+        x = x < a ? 2a - x : x
+        x = x > b ? 2b - x : x
+    end
+    return x
 end

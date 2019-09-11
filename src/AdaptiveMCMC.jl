@@ -16,6 +16,6 @@ abstract type Chain end
 
 export
     Proposals, AdaptiveUvProposal, AdaptiveRwProposal, AdaptiveUnProposal
-    adapt!, rw, scale
+    adapt!, rw, scale, reflect
 
 end
