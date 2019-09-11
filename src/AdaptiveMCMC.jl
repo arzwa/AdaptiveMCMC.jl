@@ -16,6 +16,6 @@ module AdaptiveMCMC
 
     export
         Proposals, AdaptiveUvProposal, AdaptiveRwProposal, AdaptiveUnProposal,
-        adapt!, rw, scale, reflect
+        adapt!, rw, scale, reflect, consider_adaptation!
 
 end
