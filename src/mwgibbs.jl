@@ -4,7 +4,8 @@
 """
     mwgibbs(chain::Chain, order::Array{Int64}, p::Symbol; move=rw)
 
-Metropolis-within-Gibbs update for a vector of parameters.
+Metropolis-within-Gibbs update for a vector of parameters. Chain shoudl
+implement `logpdf(chain, p=>x, :i=>i)`
 """
 function mwgibbs(chain::Chain, order::Array{Int64}, p::Symbol; move=rw)
     x = deepcopy(chain[p])
@@ -21,8 +22,7 @@ function mwgibbs(chain::Chain, order::Array{Int64}, p::Symbol; move=rw)
         else
             x[p, i] = chain[p, i]
         end
-        chain.gen % prop.tuninterval == 0 ?
-            adapt!(prop) : nothing
+        consider_adaptation!(prop)
     end
     chain[p] = x
 end

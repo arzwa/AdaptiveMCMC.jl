@@ -5,21 +5,36 @@ const Proposals = Dict{Symbol,Union{Vector{<:ProposalKernel},<:ProposalKernel}}
 const Symmetric = Union{Normal,Uniform}
 
 """
-    AdaptiveUvProposal(accepted::Int64, tuneinterval::Int64, kernel::Normal)
+    AdaptiveUvProposal(accepted::Int64, tuneinterval::Int64, kernel::Normal,
+        move::Function)
 
-An adaptive Univariate proposal kernel. To be used with the `rw!()` (random
-walk) and `scale!()` update functions.
+An adaptive Univariate proposal kernel.
 """
 mutable struct AdaptiveUvProposal{T} <: ProposalKernel
     kernel::T
     tuneinterval::Int64
     accepted::Int64
+    move::Function
+    bounds::Tuple{Float64,Float64}
 end
 
-AdaptiveRwProposal() = AdaptiveUvProposal(Normal())
-AdaptiveUnProposal() = AdaptiveUvProposal(Uniform(-0.5, 0.5))
-AdaptiveUvProposal(d::Normal, ti=50) = AdaptiveUvProposal{Normal}(d, ti, 0.)
-AdaptiveUvProposal(d::Uniform, ti=50) = AdaptiveUvProposal{Uniform}(d, ti, 0.)
+function (prop::AdaptiveUvProposal)(θ)
+    return prop.move(prop, θ)
+end
+
+# constructors
+AdaptiveUvProposal(d::Normal, ti=25, move=rw, bounds=(-Inf, Inf)) =
+    AdaptiveUvProposal{Normal}(d, ti, 0., move, bounds)
+AdaptiveUvProposal(d::Uniform, ti=25, move=rw, bounds=(-Inf, Inf)) =
+    AdaptiveUvProposal{Uniform}(d, ti, 0., move, bounds)
+
+# other helpful proposals
+AdaptiveRwProposal(σ=1.0) = AdaptiveUvProposal(Normal(0., 1.))
+AdaptiveUnProposal(ϵ=0.5) = AdaptiveUvProposal(Uniform(-ϵ, ϵ))
+AdaptiveScaleProposal(ϵ=0.5) =
+    AdaptiveUvProposal(Uniform(-ϵ, ϵ), 25., scale, (0.,Inf))
+AdaptiveUnitProposal(ϵ=0.2) =
+    AdaptiveUvProposal(Uniform(-ϵ, ϵ), 25., rw, (0.,1.))
 
 Base.rand(prop::ProposalKernel) = rand(prop.kernel)
 Base.rand(prop::ProposalKernel, n::Int64) = rand(prop.kernel, n)
@@ -45,9 +60,15 @@ adapted(kernel::Uniform, lσ::Float64) = Uniform(-exp(lσ), exp(lσ))
 adapted(kernel::Normal, lσ::Float64) = Normal(0., exp(lσ))
 
 # Random walk proposals
-rw(k::AdaptiveUvProposal{T}, x::Float64) where T<:Symmetric = x + rand(k), 0.
-rw(k::AdaptiveUvProposal{T}, x::Vector{Float64}) where T<:Symmetric =
-    x .+ rand(k), 0.
+function rw(k::AdaptiveUvProposal{T}, x::Float64) where T<:Symmetric
+    xp = reflect(x + rand(k), k.bounds...)
+    return xp, 0.
+end
+
+function rw(k::AdaptiveUvProposal{T}, x::Vector{Float64}) where T<:Symmetric
+    xp = reflect(x .+ rand(k), 0., k.bounds...)
+    return xp, 0.
+end
 
 # scaling proposals
 function scale(k::AdaptiveUvProposal{Uniform}, x::Float64)
