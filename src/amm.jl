@@ -27,7 +27,7 @@ function (prop::AdaptiveMixtureProposal)(θ::Vector{Float64})
     θ + x
 end
 
-# NOTE: this algorithm is not very numerically stable
+# NOTE: this algorithm is not numerically stable in general
 function update_covariance!(p::AdaptiveMixtureProposal, θ::Vector{Float64})
     n = p.n + 1
     Exx = ((n-1)*p.Exx + θ*θ')/n

@@ -17,21 +17,20 @@ function Distributions.logpdf(chain::MvNormalChain, args...)
 end
 
 
-d = 20
-S = cov(randn(d, d))
-x = randn(d)
-target = MvNormal(x, S)
-θ = rand(target, 1000)
-X = hcat([rand(MvNormal(θ[:,i], 1)) for i in 1:size(θ)[2]]...)
+d = 2
+n = 1000
+θ = rand(MvNormal([1 0.9 ; 0.9 1]), 5)
+X = hcat([[rand(Normal(θ[1,i])), rand(Normal(θ[2,i]))] for i in 1:n]...)
 
 p = Proposals(:θ=>AdaptiveMixtureProposal(d, start=100))
 trace = zeros(0, d)
-chain = MvNormalChain(X, MvNormal(d,5), State(:θ=>x, :logp=>-Inf), p, 0, trace)
+chain = MvNormalChain(X, MvNormal(d,5),
+    State(:θ=>rand(d), :logp=>-Inf), p, 0, trace)
 
 for i=1:10000
     amm_mcmc!(chain, :θ)
     chain.trace = [chain.trace ; chain[:θ]']
 end
 
-plot(chain.trace[:, 1:5])
-hline!(θ[1:5], linewidth=5, alpha=0.5)
+histogram(chain.trace[1000:end,1])
+histogram!(chain.trace[1000:end,2])
