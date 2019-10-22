@@ -28,13 +28,20 @@ AdaptiveUvProposal(d::Normal, ti=25, move=rw, bounds=(-Inf, Inf)) =
 AdaptiveUvProposal(d::Uniform, ti=25, move=rw, bounds=(-Inf, Inf)) =
     AdaptiveUvProposal{Uniform}(d, ti, 0., move, bounds)
 
+
 # other helpful proposals
-AdaptiveRwProposal(σ=1.0) = AdaptiveUvProposal(Normal(0., 1.))
+AdaptiveRwProposal(σ=1.0) = AdaptiveUvProposal(Normal(0., σ))
 AdaptiveUnProposal(ϵ=0.5) = AdaptiveUvProposal(Uniform(-ϵ, ϵ))
 AdaptiveScaleProposal(ϵ=0.5) =
     AdaptiveUvProposal(Uniform(-ϵ, ϵ), 25., scale, (0.,Inf))
 AdaptiveUnitProposal(ϵ=0.2) =
     AdaptiveUvProposal(Uniform(-ϵ, ϵ), 25., rw, (0.,1.))
+
+
+# coevol-like
+CoevolProposals(σ=1.0, ti=25) = [
+    AdaptiveUvProposal(Normal(0., σ), ti, m) for m in [rw, rwrandom, rwiid]]
+
 
 Base.rand(prop::ProposalKernel) = rand(prop.kernel)
 Base.rand(prop::ProposalKernel, n::Int64) = rand(prop.kernel, n)
@@ -59,6 +66,7 @@ hyperp(x::AdaptiveUvProposal{Normal}) = x.kernel.σ
 adapted(kernel::Uniform, lσ::Float64) = Uniform(-exp(lσ), exp(lσ))
 adapted(kernel::Normal, lσ::Float64) = Normal(0., exp(lσ))
 
+
 # Random walk proposals
 function rw(k::AdaptiveUvProposal{T}, x::Float64) where T<:Symmetric
     xp = reflect(x + rand(k), k.bounds...)
@@ -66,9 +74,23 @@ function rw(k::AdaptiveUvProposal{T}, x::Float64) where T<:Symmetric
 end
 
 function rw(k::AdaptiveUvProposal{T}, x::Vector{Float64}) where T<:Symmetric
-    xp = reflect(x .+ rand(k), 0., k.bounds...)
+    xp = reflect.(x .+ rand(k), k.bounds...)
     return xp, 0.
 end
+
+function rwrandom(k::AdaptiveUvProposal{T}, x::Vector{Float64}) where
+        T<:Symmetric
+    i = rand(1:length(x))
+    xp, r = rw(k, x[i])
+    [x[1:i-1] ; xp; x[i+1:end]], r
+end
+
+function rwiid(k::AdaptiveUvProposal{T}, x::Vector{Float64}) where
+        T<:Symmetric
+    xp = reflect.(x .+ rand(k, length(x)), k.bounds...)
+    xp, 0.
+end
+
 
 # scaling proposals
 function scale(k::AdaptiveUvProposal{Uniform}, x::Float64)
