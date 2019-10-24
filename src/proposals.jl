@@ -1,7 +1,7 @@
 abstract type ProposalKernel end
 
 # container struct
-const Proposals = Dict{Symbol,Union{Vector{<:ProposalKernel},<:ProposalKernel}}
+const Proposals = Dict{Symbol,Union{Array{<:ProposalKernel},<:ProposalKernel}}
 const Symmetric = Union{Normal,Uniform}
 
 """
@@ -14,19 +14,22 @@ mutable struct AdaptiveUvProposal{T} <: ProposalKernel
     kernel::T
     tuneinterval::Int64
     accepted::Int64
+    total::Int64
     move::Function
     bounds::Tuple{Float64,Float64}
 end
 
 function (prop::AdaptiveUvProposal)(θ)
+    consider_adaptation!(prop)
+    prop.total += 1
     return prop.move(prop, θ)
 end
 
 # constructors
 AdaptiveUvProposal(d::Normal, ti=25, move=rw, bounds=(-Inf, Inf)) =
-    AdaptiveUvProposal{Normal}(d, ti, 0., move, bounds)
+    AdaptiveUvProposal{Normal}(d, ti, 0, 0, move, bounds)
 AdaptiveUvProposal(d::Uniform, ti=25, move=rw, bounds=(-Inf, Inf)) =
-    AdaptiveUvProposal{Uniform}(d, ti, 0., move, bounds)
+    AdaptiveUvProposal{Uniform}(d, ti, 0, 0, move, bounds)
 
 
 # other helpful proposals
@@ -58,8 +61,8 @@ function adapt!(x::AdaptiveUvProposal{T}, gen::Int64,
     x.accepted = 0
 end
 
-consider_adaptation!(prop::ProposalKernel, generation::Int) =
-    generation % prop.tuneinterval == 0 ? adapt!(prop, generation) : nothing
+consider_adaptation!(prop::ProposalKernel) =
+    prop.total % prop.tuneinterval == 0 ? adapt!(prop, prop.total) : nothing
 
 hyperp(x::AdaptiveUvProposal{Uniform}) = x.kernel.b
 hyperp(x::AdaptiveUvProposal{Normal}) = x.kernel.σ

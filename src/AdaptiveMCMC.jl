@@ -14,7 +14,7 @@ module AdaptiveMCMC
     arguments.
     """
     abstract type Chain end
-    const State = Dict{Symbol,Union{Vector{Float64},Float64}}
+    const State = Dict{Symbol,Union{Array{Float64},Float64,Int64}}
 
     Base.getindex(w::Chain, s::Symbol) = w.state[s]
     Base.getindex(w::Chain, s::Symbol, i::Int64) = w.state[s][i]
@@ -26,6 +26,7 @@ module AdaptiveMCMC
     export
         Proposals, AdaptiveUvProposal, AdaptiveRwProposal, AdaptiveUnProposal,
         AdaptiveUnitProposal, AdaptiveScaleProposal, adapt!, rw, scale, Chain,
-        reflect, consider_adaptation!, AdaptiveMixtureProposal, amm_mcmc!, State
+        reflect, consider_adaptation!, AdaptiveMixtureProposal, amm_mcmc!,
+        State, CoevolProposals
 
 end
