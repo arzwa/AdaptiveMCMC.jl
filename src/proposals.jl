@@ -42,8 +42,10 @@ AdaptiveUnitProposal(ϵ=0.2) =
 
 
 # coevol-like
-CoevolProposals(σ=1.0, ti=25) = [
-    AdaptiveUvProposal(Normal(0., σ), ti, m) for m in [rw, rwrandom, rwiid]]
+CoevolRwProposals(σ=[1.0, 1.0, 1.0], ti=25) = [AdaptiveUvProposal(
+    Normal(0., s), ti, m) for (m, s) in zip([rw, rwrandom, rwiid], σ)]
+CoevolUnProposals(ϵ=[1.0, 1.0, 1.0], ti=25) = [AdaptiveUvProposal(
+    Uniform(-e, e), ti, m) for (m, e) in zip([rw, rwrandom, rwiid], ϵ)]
 
 
 Base.rand(prop::ProposalKernel) = rand(prop.kernel)

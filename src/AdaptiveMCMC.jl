@@ -27,6 +27,6 @@ module AdaptiveMCMC
         Proposals, AdaptiveUvProposal, AdaptiveRwProposal, AdaptiveUnProposal,
         AdaptiveUnitProposal, AdaptiveScaleProposal, adapt!, rw, scale, Chain,
         reflect, consider_adaptation!, AdaptiveMixtureProposal, amm_mcmc!,
-        State, CoevolProposals
+        State, CoevolUnProposals, CoevolRwProposals
 
 end
