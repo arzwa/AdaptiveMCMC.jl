@@ -10,13 +10,16 @@ const Symmetric = Union{Normal,Uniform}
 
 An adaptive Univariate proposal kernel.
 """
-mutable struct AdaptiveUvProposal{T} <: ProposalKernel
-    kernel::T
-    tuneinterval::Int64
-    accepted::Int64
-    total::Int64
-    move::Function
-    bounds::Tuple{Float64,Float64}
+@with_kw mutable struct AdaptiveUvProposal{T} <: ProposalKernel
+    kernel      ::T                       = Normal()
+    tuneinterval::Int64                   = 25
+    accepted    ::Int64                   = 0
+    total       ::Int64                   = 0
+    move        ::Function                = rw
+    bounds      ::Tuple{Float64,Float64}  = (-Inf, Inf)
+    δmax        ::Float64                 = 0.2
+    logbound    ::Float64                 = 10.
+    target      ::Float64                 = 0.36
 end
 
 function (prop::AdaptiveUvProposal)(θ)
@@ -25,49 +28,41 @@ function (prop::AdaptiveUvProposal)(θ)
     return prop.move(prop, θ)
 end
 
-# constructors
-AdaptiveUvProposal(d::Normal, ti=25, move=rw, bounds=(-Inf, Inf)) =
-    AdaptiveUvProposal{Normal}(d, ti, 0, 0, move, bounds)
-AdaptiveUvProposal(d::Uniform, ti=25, move=rw, bounds=(-Inf, Inf)) =
-    AdaptiveUvProposal{Uniform}(d, ti, 0, 0, move, bounds)
-
-
-# other helpful proposals
-AdaptiveRwProposal(σ=1.0) = AdaptiveUvProposal(Normal(0., σ))
-AdaptiveUnProposal(ϵ=0.5) = AdaptiveUvProposal(Uniform(-ϵ, ϵ))
-AdaptiveScaleProposal(ϵ=0.5) =
-    AdaptiveUvProposal(Uniform(-ϵ, ϵ), 25., scale, (0.,Inf))
-AdaptiveUnitProposal(ϵ=0.2) =
-    AdaptiveUvProposal(Uniform(-ϵ, ϵ), 25., rw, (0.,1.))
-
+# other helpful constructors
+AdaptiveRwProposal(σ=1.0) = AdaptiveUvProposal(kernel=Normal(0., σ))
+AdaptiveUnProposal(ϵ=0.5) = AdaptiveUvProposal(kernel=Uniform(-ϵ, ϵ))
+AdaptiveScaleProposal(ϵ=0.5) = AdaptiveUvProposal(kernel=Uniform(-ϵ, ϵ), move=scale, bounds=(0.,Inf))
+AdaptiveUnitProposal(ϵ=0.2) = AdaptiveUvProposal(kernel=Uniform(-ϵ, ϵ), bounds=(0.,1.))
 
 # coevol-like
 CoevolRwProposals(σ=[1.0, 1.0, 1.0], ti=25) = [AdaptiveUvProposal(
-    Normal(0., s), ti, m) for (m, s) in zip([rw, rwrandom, rwiid], σ)]
+    move=m, kernel=Normal(0., s), tuneinterval=ti)
+        for (m, s) in zip([rw, rwrandom, rwiid], σ)]
 CoevolUnProposals(ϵ=[1.0, 1.0, 1.0], ti=25) = [AdaptiveUvProposal(
-    Uniform(-e, e), ti, m) for (m, e) in zip([rw, rwrandom, rwiid], ϵ)]
+    move=m, kernel=Uniform(-e, e),tuneinterval=ti)
+        for (m, e) in zip([rw, rwrandom, rwiid], ϵ)]
 
-
+# Base extensions
 Base.rand(prop::ProposalKernel) = rand(prop.kernel)
 Base.rand(prop::ProposalKernel, n::Int64) = rand(prop.kernel, n)
 Base.getindex(spl::Proposals, s::Symbol, i::Int64) = spl[s][i]
 
-function adapt!(x::AdaptiveUvProposal{T}, gen::Int64,
-        target=0.2, bound=10., δmax=0.25) where T<:Distribution
-    gen == 0 ? (return) : nothing
-    δn = min(δmax, 1. /√(gen/x.tuneinterval))
-    α = x.accepted / x.tuneinterval
+function adapt!(x::AdaptiveUvProposal{T}) where T<:Distribution
+    @unpack total, tuneinterval, accepted, δmax, target, logbound = x
+    total == 0 ? (return) : nothing
+    δn = min(δmax, 1. /√(total/tuneinterval))
+    α = accepted / tuneinterval
     lσ = α > target ? log(hyperp(x)) + δn : log(hyperp(x)) - δn
-    lσ = abs(lσ) > bound ? sign(lσ) * bound : lσ
+    lσ = abs(lσ) > logbound ? sign(lσ) * logbound : lσ
     x.kernel = adapted(x.kernel, lσ)
     x.accepted = 0
 end
 
 consider_adaptation!(prop::ProposalKernel) =
-    prop.total % prop.tuneinterval == 0 ? adapt!(prop, prop.total) : nothing
+    prop.total % prop.tuneinterval == 0 ? adapt!(prop) : nothing
 
-hyperp(x::AdaptiveUvProposal{Uniform}) = x.kernel.b
-hyperp(x::AdaptiveUvProposal{Normal}) = x.kernel.σ
+hyperp(x::AdaptiveUvProposal{Uniform{T}}) where T<:Real = x.kernel.b
+hyperp(x::AdaptiveUvProposal{Normal{T}}) where T<:Real = x.kernel.σ
 adapted(kernel::Uniform, lσ::Float64) = Uniform(-exp(lσ), exp(lσ))
 adapted(kernel::Normal, lσ::Float64) = Normal(0., exp(lσ))
 
