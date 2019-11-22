@@ -20,6 +20,7 @@ An adaptive Univariate proposal kernel.
     δmax        ::Float64                 = 0.2
     logbound    ::Float64                 = 10.
     target      ::Float64                 = 0.36
+    stop        ::Int64                   = 1000
 end
 
 function (prop::AdaptiveUvProposal)(θ)
@@ -42,6 +43,10 @@ CoevolUnProposals(ϵ=[1.0, 1.0, 1.0], ti=25) = [AdaptiveUvProposal(
     move=m, kernel=Uniform(-e, e),tuneinterval=ti)
         for (m, e) in zip([rw, rwrandom, rwiid], ϵ)]
 
+# reversible jump Beluga
+DecreaseλProposal(δ=0.5, ti=25) = AdaptiveUvProposal(
+    kernel=Uniform(-δ,δ), tuneinterval=ti, move=decrease)
+
 # Base extensions
 Base.rand(prop::ProposalKernel) = rand(prop.kernel)
 Base.rand(prop::ProposalKernel, n::Int64) = rand(prop.kernel, n)
@@ -59,7 +64,8 @@ function adapt!(x::AdaptiveUvProposal{T}) where T<:Distribution
 end
 
 consider_adaptation!(prop::ProposalKernel) =
-    prop.total % prop.tuneinterval == 0 ? adapt!(prop) : nothing
+    (prop.total <= prop.stop && prop.total % prop.tuneinterval == 0) ?
+        adapt!(prop) : nothing
 
 hyperp(x::AdaptiveUvProposal{Uniform{T}}) where T<:Real = x.kernel.b
 hyperp(x::AdaptiveUvProposal{Normal{T}}) where T<:Real = x.kernel.σ
@@ -91,6 +97,7 @@ function rwiid(k::AdaptiveUvProposal{T}, x::Vector{Float64}) where
     xp, 0.
 end
 
+decrease(k::AdaptiveUvProposal, x::Float64) = x - abs(rand(k)), NaN
 
 # scaling proposals
 function scale(k::AdaptiveUvProposal{Uniform}, x::Float64)
