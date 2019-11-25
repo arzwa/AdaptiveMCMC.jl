@@ -30,22 +30,26 @@ function (prop::AdaptiveUvProposal)(θ)
 end
 
 # other helpful constructors
-AdaptiveRwProposal(σ=1.0) = AdaptiveUvProposal(kernel=Normal(0., σ))
-AdaptiveUnProposal(ϵ=0.5) = AdaptiveUvProposal(kernel=Uniform(-ϵ, ϵ))
-AdaptiveScaleProposal(ϵ=0.5) = AdaptiveUvProposal(kernel=Uniform(-ϵ, ϵ), move=scale, bounds=(0.,Inf))
-AdaptiveUnitProposal(ϵ=0.2) = AdaptiveUvProposal(kernel=Uniform(-ϵ, ϵ), bounds=(0.,1.))
+AdaptiveRwProposal(σ=1.0, ti=25, stop=1000) = AdaptiveUvProposal(
+    kernel=Normal(0., σ), tuneinterval=ti, stop=stop)
+AdaptiveUnProposal(ϵ=0.5, ti=25, stop=1000) = AdaptiveUvProposal(
+    kernel=Uniform(-ϵ, ϵ), tuneinterval=ti, stop=stop)
+AdaptiveScaleProposal(ϵ=0.5, ti=25, stop=1000) = AdaptiveUvProposal(
+    kernel=Uniform(-ϵ, ϵ), move=scale, bounds=(0.,Inf), tuneinterval=ti, stop=stop)
+AdaptiveUnitProposal(ϵ=0.2, ti=25, stop=1000) = AdaptiveUvProposal(
+    kernel=Uniform(-ϵ, ϵ), bounds=(0.,1.), tuneinterval=ti, stop=stop)
 
 # coevol-like
-CoevolRwProposals(σ=[1.0, 1.0, 1.0], ti=25) = [AdaptiveUvProposal(
-    move=m, kernel=Normal(0., s), tuneinterval=ti)
+CoevolRwProposals(σ=[1.0, 1.0, 1.0], ti=25, stop=1000) = [AdaptiveUvProposal(
+    move=m, kernel=Normal(0., s), tuneinterval=ti, stop=stop)
         for (m, s) in zip([rw, rwrandom, rwiid], σ)]
-CoevolUnProposals(ϵ=[1.0, 1.0, 1.0], ti=25) = [AdaptiveUvProposal(
-    move=m, kernel=Uniform(-e, e),tuneinterval=ti)
+CoevolUnProposals(ϵ=[1.0, 1.0, 1.0], ti=25, stop=1000) = [AdaptiveUvProposal(
+    move=m, kernel=Uniform(-e, e),tuneinterval=ti, stop=stop)
         for (m, e) in zip([rw, rwrandom, rwiid], ϵ)]
 
 # reversible jump Beluga
-DecreaseλProposal(δ=0.5, ti=25) = AdaptiveUvProposal(
-    kernel=Uniform(-δ,δ), tuneinterval=ti, move=decrease)
+DecreaseλProposal(δ=0.5, ti=25, stop=1000) = AdaptiveUvProposal(
+    kernel=Uniform(-δ,δ), tuneinterval=ti, move=decrease, stop=stop)
 
 # Base extensions
 Base.rand(prop::ProposalKernel) = rand(prop.kernel)
