@@ -76,6 +76,9 @@ hyperp(x::AdaptiveUvProposal{Normal{T}}) where T<:Real = x.kernel.σ
 adapted(kernel::Uniform, lσ::Float64) = Uniform(-exp(lσ), exp(lσ))
 adapted(kernel::Normal, lσ::Float64) = Normal(0., exp(lσ))
 
+# independence proposal
+independent(k::AdaptiveUvProposal, x::Float64) = rand(k.kernel), 0.
+independent(k::AdaptiveUvProposal) = rand(k.kernel), 0.
 
 # Random walk proposals
 function rw(k::AdaptiveUvProposal{T}, x::Float64) where T<:Symmetric
