@@ -1,21 +1,19 @@
 abstract type ProposalKernel end
 
 # container struct
-const Proposals = Dict{Symbol,Union{Array{<:ProposalKernel},<:ProposalKernel}}
 const Symmetric = Union{Normal,Uniform}
 
 """
-    AdaptiveUvProposal(accepted::Int64, tuneinterval::Int64, kernel::Normal,
-        move::Function)
+    AdaptiveUvProposal(kernel)
 
 An adaptive Univariate proposal kernel.
 """
-@with_kw mutable struct AdaptiveUvProposal{T} <: ProposalKernel
+@with_kw mutable struct AdaptiveUvProposal{T,V} <: ProposalKernel
     kernel      ::T                       = Normal()
+    move        ::V                       = rw
     tuneinterval::Int64                   = 25
-    accepted    ::Int64                   = 0
     total       ::Int64                   = 0
-    move        ::Function                = rw
+    accepted    ::Int64                   = 0
     bounds      ::Tuple{Float64,Float64}  = (-Inf, Inf)
     δmax        ::Float64                 = 0.2
     logbound    ::Float64                 = 10.
@@ -40,21 +38,20 @@ AdaptiveUnitProposal(ϵ=0.2, ti=25, stop=1000) = AdaptiveUvProposal(
     kernel=Uniform(-ϵ, ϵ), bounds=(0.,1.), tuneinterval=ti, stop=stop)
 
 # coevol-like
-CoevolRwProposals(σ=[1.0, 1.0, 1.0], ti=25, stop=1000) = [AdaptiveUvProposal(
-    move=m, kernel=Normal(0., s), tuneinterval=ti, stop=stop)
+CoevolRwProposals(σ=[1.0, 1.0, 1.0], ti=25, stop=1000) = AdaptiveUvProposal[
+    AdaptiveUvProposal(move=m, kernel=Normal(0., s), tuneinterval=ti, stop=stop)
         for (m, s) in zip([rw, rwrandom, rwiid], σ)]
-CoevolUnProposals(ϵ=[1.0, 1.0, 1.0], ti=25, stop=1000) = [AdaptiveUvProposal(
-    move=m, kernel=Uniform(-e, e),tuneinterval=ti, stop=stop)
+CoevolUnProposals(ϵ=[1.0, 1.0, 1.0], ti=25, stop=1000) = AdaptiveUvProposal[
+    AdaptiveUvProposal(move=m, kernel=Uniform(-e, e),tuneinterval=ti, stop=stop)
         for (m, e) in zip([rw, rwrandom, rwiid], ϵ)]
 
 # reversible jump Beluga
-DecreaseλProposal(δ=0.5, ti=25, stop=1000) = AdaptiveUvProposal(
+DecreaseProposal(δ=0.5, ti=25, stop=1000) = AdaptiveUvProposal(
     kernel=Uniform(-δ,δ), tuneinterval=ti, move=decrease, stop=stop)
 
 # Base extensions
 Base.rand(prop::ProposalKernel) = rand(prop.kernel)
 Base.rand(prop::ProposalKernel, n::Int64) = rand(prop.kernel, n)
-Base.getindex(spl::Proposals, s::Symbol, i::Int64) = spl[s][i]
 
 function adapt!(x::AdaptiveUvProposal{T}) where T<:Distribution
     @unpack total, tuneinterval, accepted, δmax, target, logbound = x
