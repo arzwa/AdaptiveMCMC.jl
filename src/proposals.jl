@@ -1,6 +1,5 @@
 abstract type ProposalKernel end
 
-# container struct
 const Symmetric = Union{Normal,Uniform}
 
 """
@@ -104,12 +103,12 @@ end
 decrease(k::AdaptiveUvProposal, x::Float64) = x - abs(rand(k)), NaN
 
 # scaling proposals
-function scale(k::AdaptiveUvProposal{Uniform}, x::Float64)
+function scale(k::AdaptiveUvProposal, x::Float64)
     xp = x*exp(rand(k))
     return xp, log(xp) - log(x)
 end
 
-function scale(k::AdaptiveUvProposal{Uniform}, x::Vector{Float64})
+function scale(k::AdaptiveUvProposal, x::Vector{Float64})
     xp = x .* exp(rand(k))
     return xp, sum(log.(xp)) - sum(log.(x))
 end
@@ -120,4 +119,38 @@ function reflect(x::Float64, a::Float64=0., b::Float64=1.)
         x = x > b ? 2b - x : x
     end
     return x
+end
+
+WgdProposals(ϵ=[1.0, 1.0, 1.0], ti=25) = AdaptiveUvProposal[
+    AdaptiveUvProposal(kernel=Uniform(-e, e), tuneinterval=ti, move=m)
+        for (m, e) in zip([wgdrw, wgdrand, wgdiid], ϵ)]
+
+function wgdrw(k::AdaptiveUvProposal, x::Vector{Float64})
+    xp = x .+ rand(k)
+    xp[1] = reflect(xp[1], 0., 1.)
+    return xp, 0.
+end
+
+function wgdrand(k::AdaptiveUvProposal, x::Vector{Float64})
+    i = rand(1:3)
+    xp = copy(x)
+    xp[i] = x[i] + rand(k)
+    i == 1 ? xp[1] = reflect(xp[1], 0., 1.) : nothing
+    return xp, 0.
+end
+
+function wgdiid(k::AdaptiveUvProposal, x::Vector{Float64})
+    xp = x .+ rand(k, 3)
+    xp[1] = reflect(xp[1], 0., 1.)
+    return xp, 0.
+end
+
+# not sure about this one
+function wgdqλ(k::AdaptiveUvProposal, x::Vector{Float64})
+    xp = copy(x)
+    r = rand(k)
+    xp[1] += r
+    xp[2] -= r
+    xp[1] = reflect(xp[1], 0., 1.)
+    return xp, 0.
 end

@@ -1,16 +1,16 @@
 """
     AdaptiveMixtureProposal
 """
-mutable struct AdaptiveMixtureProposal <: ProposalKernel
-    d::Int  # dimension
-    Σ::Matrix{Float64}  # covariance matrix
-    σ::Float64  # fixed component σ
-    β::Float64  # mixture weight
-    Ex::Vector{Float64}
-    Exx::Matrix{Float64}
-    n::Int64  # generation
-    accepted::Int64
-    start::Int64
+@with_kw mutable struct AdaptiveMixtureProposal <: ProposalKernel
+    d  ::Int  # dimension
+    Σ  ::Matrix{Float64} = ones(d,d) + I # covariance matrix
+    σ  ::Float64         = 0.01 # fixed component σ
+    β  ::Float64         = 0.1  # mixture weight
+    Ex ::Vector{Float64} = zeros(d)
+    Exx::Matrix{Float64} = zeros(d,d)
+    n  ::Int64           = 0 # generation
+    accepted::Int64      = 0
+    start::Int64         = 50
 end
 
 AdaptiveMixtureProposal(d::Int64; σ=0.1, β=0.1, start=100) =
